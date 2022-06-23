@@ -1,6 +1,8 @@
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
+use std::time::Duration;
+use std::thread;
 use std::fs;
 
 fn main() {
@@ -19,21 +21,29 @@ fn handle_connection(mut stream: TcpStream) {
     stream.read(&mut buffer).unwrap();
 
     let expected_get = b"GET / HTTP/1.1";
+    let sleep = b"GET /sleep HTTP/1.1";
+
+    let header_200 = "200 OK";
+    let html_file = fs::read_to_string("hello.html").unwrap();
 
     println!("Request: {}", String::from_utf8_lossy(&buffer));
     if buffer.starts_with(expected_get) {
-        let html_file = fs::read_to_string("hello.html").unwrap();
-        write_response(&stream, html_file);
+        write_response(&stream, header_200, html_file);
+    } else if buffer.starts_with(sleep) {
+        thread::sleep(Duration::from_secs(10));
+        write_response(&stream, header_200, html_file);
     } else {
-        write_response(&stream, String::from("Page not found"));
+        let header_404 = "404 NOT FOUND";
+        write_response(&stream, header_404, String::from("Page not found"));
     }
 
     stream.flush().unwrap();
 }
 
-fn write_response(mut stream: &TcpStream, contents: String) {
+fn write_response(mut stream: &TcpStream, header: &str, contents: String) {
     let response = format!(
-                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
+                            "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
+                            header,
                             contents.len(),
                             contents);
     stream.write(response.as_bytes()).unwrap();
