@@ -18,18 +18,23 @@ fn handle_connection(mut stream: TcpStream) {
 
     stream.read(&mut buffer).unwrap();
 
-    println!("Request: {}", String::from_utf8_lossy(&buffer));
+    let expected_get = b"GET / HTTP/1.1";
 
-    write_response(&stream);
+    println!("Request: {}", String::from_utf8_lossy(&buffer));
+    if buffer.starts_with(expected_get) {
+        let html_file = fs::read_to_string("hello.html").unwrap();
+        write_response(&stream, html_file);
+    } else {
+        write_response(&stream, String::from("Page not found"));
+    }
 
     stream.flush().unwrap();
 }
 
-fn write_response(mut stream: &TcpStream) {
-    let html_file = fs::read_to_string("hello.html").unwrap();
+fn write_response(mut stream: &TcpStream, contents: String) {
     let response = format!(
                             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
-                            html_file.len(),
-                            html_file);
+                            contents.len(),
+                            contents);
     stream.write(response.as_bytes()).unwrap();
 }
