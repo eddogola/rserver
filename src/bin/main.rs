@@ -1,17 +1,20 @@
-use std::io::prelude::*;
+use std::io::prelude::*; // bring in used io traits(e.g Reader and Writer) to namespace
 use std::net::TcpListener;
-use std::net::TcpStream;
+use std::net::TcpStream; // for type declaration
 use std::time::Duration;
 use std::thread;
 use std::fs;
 
+use mic_check::ThreadPool;
+
 fn main() {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap(); // unwrap here for demo purposes - just to get it to work
+    let pool = ThreadPool::new(4);
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
 
-        thread::spawn(|| {
+        pool.execute(|| {
             handle_connection(stream);
         });
     }
