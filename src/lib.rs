@@ -13,11 +13,15 @@ impl Worker {
         let thread = Some(thread::spawn(move || loop {
             let message = receiver.lock().unwrap().recv().unwrap();
 
-            println!("Worker {} got a job: executing...", id);
-
             match message {
-                Message::NewJob(job) => job(),
-                _Terminate => break,
+                Message::NewJob(job) => {
+                    println!("Worker {} got a job: executing...", id);
+                    job();
+                },
+                Message::Terminate => {
+                    println!("Worker {} told to terminate", id);
+                    break;
+                },
             }
         }));
 
@@ -70,10 +74,13 @@ impl ThreadPool {
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
+        println!("Sending terminate message to all workers");
+        for _ in &self.workers {
+            self.sender.send(Message::Terminate).unwrap();
+        }
+
         for worker in &mut self.workers {
             println!("Gracefully shutting down worker {}", worker.id);
-
-            self.sender.send(Message::Terminate).unwrap();
 
             if let Some(thread) = worker.thread.take() { // this way ensures no panicking happens if None is found
                 thread.join().unwrap();
